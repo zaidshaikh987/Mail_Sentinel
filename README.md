@@ -12,12 +12,14 @@ Email remains critical infrastructure. Despite widespread TLS adoption, SMTP, IM
 
 MailSentinel is an AI-assisted passive network forensic framework that automatically assesses the cryptographic security posture of enterprise email infrastructure. It reconstructs sessions, identifies encryption transitions, analyzes TLS negotiations, validates certificates, detects weaknesses, and uses Machine Learning to classify risk and detect anomalous behavior.
 
-### Key Differentiators
+## Core Capabilities
 
-1. **Passively-Observable STARTTLS Command Injection Detection:** MailSentinel inspects raw TCP segment boundaries to detect pre-handshake command injection vulnerabilities (as detailed in USENIX Security '21 research).
-2. **Evidence-Linked Findings:** Every verdict traces to a specific TCP stream, a packet reference, an RFC/NIST citation, and an actionable remediation sentence.
-3. **Calibrated Uncertainty:** Missing packets or encrypted TLS 1.3 certificates trigger `INSUFFICIENT_EVIDENCE` warnings with strict confidence levels, rather than silently omitting data or asserting false negatives.
-4. **Transparent Risk Scoring:** Risk scores are calculated using a deterministic, hand-computable formula. AI is used strictly for anomaly detection, never replacing the deterministic rules.
+- **Protocol & Session Reconstruction:** Automatically spots SMTP, IMAP, POP3 email traffic, rebuilds TCP stream conversations, and checks STARTTLS encryption upgrades.
+- **TLS Handshake Analysis:** Replays the secure-connection handshake, showing agreed TLS version, cipher suite, key exchange method, and Forward Secrecy check.
+- **X.509 Certificate Validation:** Extracts certificates, verifies trust chain, checks expiry, identifies public key algorithm & length, digital signature type.
+- **Cryptographic Weakness Detection:** Flags outdated TLS versions, weak cipher suites, unsafe algorithms, risky protocol settings, certificate flaws.
+- **AI/ML Intelligence Engine:** Uses cryptographic features to classify risk, catch unusual TLS behaviour, score security health, rank threats and suggest fixes.
+- **Forensic Reporting & Dashboard:** Urgency-ranked security issues, downloadable reports in JSON, PDF and HTML, plus an interactive visual dashboard for SOC teams.
 
 ---
 
