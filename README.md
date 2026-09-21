@@ -29,17 +29,42 @@ MailSentinel is built using a decoupled, highly scalable three-tier architecture
 
 ```mermaid
 flowchart TD
-    A[React Dashboard: Upload Capture] --> B[Spring Boot API]
-    B --> C[(Capture Evidence & Hashes)]
-    B --> D[(Job Queue & Persistence)]
-    D --> E[Background Task Worker]
-    C --> E
-    E --> F[Python Engine: TCP Reassembly & TLS Checks]
-    F --> G[Rules Engine + ML Classifier + Coverage Metrics]
-    H[Historical Baselines] --> G
-    G --> I[JSON Forensic Report]
-    I --> J[Interactive UI & Dashboards]
-    I --> K[HTML & PDF Deliverables]
+    subgraph Frontend [React / Vite Dashboard]
+        UI_In[Analyst Uploads PCAP Evidence]
+        UI_Out[Interactive Posture Dashboard]
+        UI_Export[Export HTML & PDF Deliverables]
+    end
+
+    subgraph Backend [Spring Boot Orchestration]
+        API[REST API Gateway]
+        DB[(PostgreSQL / H2 Data Store)]
+        Queue[Background Job Queue]
+        API --> DB
+        API --> Queue
+    end
+
+    subgraph Engine [Python Forensic Engine]
+        direction TB
+        Parser[TShark & Scapy PCAP Ingestion] --> TCP[TCP Stream Reassembly]
+        TCP --> Proto[SMTP/IMAP/POP3 Protocol ID]
+        Proto --> STLS[STARTTLS State Machine & Injection Check]
+        STLS --> TLS[TLS Version & Cipher Suite Analyzer]
+        TLS --> Cert[X.509 Certificate Chain Validation]
+        
+        Cert --> Assess{Assessment Layer}
+        
+        Assess --> |Deterministic| Rules[RFC/NIST Rule Engine]
+        Assess --> |Machine Learning| ML[Isolation Forest Anomaly Detection]
+        
+        Rules --> Findings[Evidence-Linked Findings & Risk Score]
+        ML --> Findings
+    end
+
+    UI_In --> |Multi-part File Upload| API
+    Queue --> |Triggers Analysis| Parser
+    Findings --> |Produces| JSON[Structured JSON Report]
+    JSON --> UI_Out
+    JSON --> UI_Export
 ```
 
 ### Component Breakdown
