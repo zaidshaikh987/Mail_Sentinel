@@ -1,0 +1,447 @@
+# MailSentinel rule base
+#
+# Every verdict the tool emits is defined here, not in Python.  Each rule
+# carries the published clause it enforces, so a finding in the report can be
+# traced to a document a reviewer can look up.  The engine that evaluates these
+# is scoring/rules.py; the condition language is a deliberately tiny structured
+# form (all/any/not + field predicates) so rules stay data and never become
+# arbitrary code.
+#
+# cap_grade is the *ceiling* a finding imposes on the session grade.  The
+# lowest ceiling across all fired rules wins.  See the README for why the
+# caps, not the weighted average, are what actually decide a grade.
+#
+# applies_to restricts a rule to a session role:
+#   submission_access  ports 587/465/143/993/110/995 — RFC 8314 governs strictly
+#   mta_relay          port 25 — opportunistic TLS (RFC 7435) is correct there
+
+version: "1.0.0"
+
+rules:
+
+  # ---------------------------------------------------------------- protocol
+  - id: MS-PROTO-001A
+    title: "Client offered deprecated/obsolete TLS versions"
+    severity: high
+    cap_grade: C
+    standard: "RFC 8996 (BCP 195) - TLS 1.0 and 1.1 moved to Historic"
+    remediation: "Upgrade or reconfigure the client so it no longer offers TLS 1.0, TLS 1.1, or SSL."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: client_offered_versions, contains_any: [2, 768, 769, 770]}
+
+  - id: MS-PROTO-001B
+    title: "Client offered NULL ciphers"
+    severity: high
+    cap_grade: C
+    standard: "RFC 7525 - MUST NOT negotiate NULL ciphers"
+    remediation: "Reconfigure the client to stop offering NULL cipher suites (e.g. TLS_NULL_WITH_NULL_NULL)."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: client_offered_ciphers, contains: 0}
+
+  - id: MS-PROTO-001
+    title: "Deprecated TLS version negotiated"
+    severity: critical
+    cap_grade: C
+    standard: "RFC 8996 (BCP 195) — TLS 1.0 and 1.1 moved to Historic"
+    remediation: "Disable TLS 1.0/1.1. Require TLS 1.2 as a minimum and prefer TLS 1.3."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: tls_version, in: ["1.0", "1.1"]}
+
+  - id: MS-PROTO-002
+    title: "SSL 3.0 or earlier negotiated"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 7568 — SSLv3 MUST NOT be used"
+    remediation: "Disable SSLv2/SSLv3 entirely; they are broken (POODLE, DROWN)."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: tls_version, in: ["SSL3.0", "SSL2.0"]}
+
+  - id: MS-PROTO-003
+    title: "Session never encrypted on a submission or access port"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 8314 §3 — cleartext considered obsolete for mail submission and access"
+    remediation: "Enable implicit TLS (465/993/995) or require STARTTLS before authentication."
+    applies_to: [submission_access]
+    condition:
+      all:
+        - {field: encrypted, eq: false}
+
+  - id: MS-PROTO-004
+    title: "MTA relay hop carried in cleartext"
+    severity: high
+    cap_grade: D
+    standard: "RFC 7435 — opportunistic security; RFC 8461 MTA-STS for enforcement"
+    remediation: "Enable STARTTLS on the relay. Publish MTA-STS or DANE so senders can require TLS."
+    applies_to: [mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: false}
+
+  # ---------------------------------------------------------------- STARTTLS
+  - id: MS-STRIP-000
+    title: "STARTTLS Command Injection Suspected"
+    severity: critical
+    cap_grade: F
+    standard: "USENIX Sec'21 - Extra command bytes in same/adjacent segment as STARTTLS exchange, pre-handshake"
+    remediation: "Inspect the TCP segment boundaries. An attacker may be pipelining commands to steal plaintext before the TLS session establishes."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: injection_suspected, eq: true}
+
+  - id: MS-STRIP-001
+    title: "STARTTLS capability appears to have been stripped in transit"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 3207; Durumeric et al., IMC 2015 — equal-length substitution observed in the wild"
+    remediation: "Treat this network path as hostile. Enforce MTA-STS or DANE so a stripped capability cannot silently downgrade delivery."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: capability_mangled, eq: true}
+
+  - id: MS-STRIP-002
+    title: "STARTTLS was offered but the client never used it"
+    severity: high
+    cap_grade: D
+    standard: "RFC 8314 §3; RFC 9325 §3.2"
+    remediation: "Configure the client to require STARTTLS. A server offering it while clients ignore it provides no protection."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: starttls_offered, eq: true}
+        - {field: starttls_requested, eq: false}
+        - {field: encrypted, eq: false}
+
+  - id: MS-STRIP-003
+    title: "STARTTLS was requested but no handshake followed"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 3207 §4 — the server MUST proceed with TLS after a 220 reply"
+    remediation: "Investigate. Either the server failed the upgrade or an intermediary blocked it."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: starttls_requested, eq: true}
+        - {field: encrypted, eq: false}
+
+  - id: MS-STRIP-004
+    title: "Server does not advertise STARTTLS at all"
+    severity: high
+    cap_grade: D
+    standard: "RFC 8314 §3 — mail servers should offer TLS on every port they serve"
+    remediation: "Enable STARTTLS on this service, or move clients to an implicit-TLS port."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: tls_mode, eq: "cleartext"}
+        - {field: starttls_offered, eq: false}
+        - {field: capability_seen, eq: true}
+        - {field: capability_mangled, eq: false}
+
+  # ---------------------------------------------------------- authentication
+  - id: SMS-AUTH-001
+    title: "Authentication credentials transmitted in cleartext"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 8314 §4.1; NIST SP 800-52r2 §3 — credentials must never traverse an unprotected channel"
+    remediation: "Force TLS before AUTH. Rotate every credential observed in this capture — treat them as compromised."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cleartext_auth, eq: true}
+
+  # ------------------------------------------------------------ cipher suite
+  - id: SMS-CIPH-001
+    title: "Anonymous or NULL cipher suite negotiated"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 9325 §4.2 — anonymous and NULL suites MUST NOT be used"
+    remediation: "Remove aNULL/eNULL suites from the server configuration."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      any:
+        - {field: cipher_anonymous, eq: true}
+        - {field: cipher_null, eq: true}
+
+  - id: SMS-CIPH-002
+    title: "Broken cipher negotiated (RC4, DES, RC2 or IDEA)"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 7465 (RC4 prohibited); RFC 9325 §4.2"
+    remediation: "Remove RC4 and single-DES suites. Prefer AES-GCM or ChaCha20-Poly1305."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cipher_broken, eq: true}
+        - {field: cipher_anonymous, eq: false}
+        - {field: cipher_export, eq: false}
+
+  - id: SMS-CIPH-003
+    title: "Export-grade cipher negotiated"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 9325 §4.2; FREAK / Logjam"
+    remediation: "Remove all EXPORT suites. They are trivially breakable by design."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cipher_export, eq: true}
+
+  - id: SMS-CIPH-004
+    title: "64-bit block cipher negotiated (Sweet32 exposure)"
+    severity: high
+    cap_grade: C
+    standard: "CVE-2016-2183 (Sweet32); RFC 8996"
+    remediation: "Disable 3DES and other 64-bit block ciphers."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cipher_small_block, eq: true}
+        - {field: cipher_broken, eq: false}
+
+  - id: SMS-CIPH-005
+    title: "Non-AEAD cipher mode negotiated"
+    severity: medium
+    cap_grade: B
+    standard: "NIST SP 800-52r2 §3.3.1 — AEAD strongly preferred; RFC 9325 §4.2"
+    remediation: "Prefer AES-GCM, AES-CCM or ChaCha20-Poly1305 over CBC. CBC in TLS has a long padding-oracle history (BEAST, Lucky13)."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: cipher_aead, eq: false}
+        - {field: cipher_null, eq: false}
+
+  - id: SMS-CIPH-006
+    title: "Cipher suite not on the IANA recommended list"
+    severity: low
+    standard: "IANA TLS Cipher Suite Registry — Recommended column"
+    remediation: "Move to a suite marked Recommended by IANA and permitted by Mozilla's Intermediate profile."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: cipher_recommended, eq: false}
+        - {field: cipher_broken, eq: false}
+
+  # ----------------------------------------------------------- key exchange
+  - id: SMS-FS-001
+    title: "No forward secrecy — static key exchange"
+    severity: high
+    cap_grade: B
+    standard: "RFC 9325 §4.1 — ephemeral key exchange required; NIST SP 800-52r2 §3.3.1"
+    remediation: "Use ECDHE or DHE. Without forward secrecy, one key compromise decrypts all recorded past traffic."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: forward_secrecy, eq: false}
+
+  - id: SMS-KEX-001
+    title: "Key exchange strength below the NIST floor"
+    severity: critical
+    cap_grade: F
+    standard: "NIST SP 800-131A Rev 2 — 112-bit security minimum (DH/RSA ≥ 2048 bits)"
+    remediation: "Use a 2048-bit or larger DH group, or an elliptic curve of at least P-256."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: kex_bits_known, eq: true}
+        - {field: kex_bits, lt: 2048}
+
+  # ----------------------------------------------------------- certificates
+  - id: SMS-CERT-001
+    title: "Certificate had already expired when the traffic was captured"
+    severity: critical
+    cap_grade: F
+    standard: "CA/Browser Forum Baseline Requirements §6.3.2; RFC 5280 §4.1.2.5"
+    remediation: "Reissue and deploy a valid certificate. Automate renewal so this cannot recur."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_expired_at_capture, eq: true}
+
+  - id: SMS-CERT-002
+    title: "Certificate not yet valid at the time of capture"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 5280 §4.1.2.5"
+    remediation: "Check the certificate's notBefore date and the server clock."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_not_yet_valid, eq: true}
+
+  - id: SMS-CERT-003
+    title: "Self-signed certificate — no certificate authority vouches for this server"
+    severity: high
+    cap_grade: C
+    standard: "NIST SP 800-52r2 §3.3 — internet-facing servers require CA-issued certificates"
+    remediation: "Replace with a certificate from a trusted CA. A self-signed certificate cannot distinguish the real server from an interceptor."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_self_signed, eq: true}
+
+  - id: SMS-CERT-004
+    title: "Certificate chain does not reach a trusted root"
+    severity: high
+    cap_grade: C
+    standard: "RFC 5280 §6 — certification path validation"
+    remediation: "Serve the full chain including intermediates, and verify the root is in common trust stores."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: chain_valid, eq: false}
+        - {field: cert_self_signed, eq: false}
+
+  - id: SMS-CERT-005
+    title: "Weak signature algorithm on the certificate (SHA-1 or MD5)"
+    severity: high
+    cap_grade: C
+    standard: "NIST SP 800-131A Rev 2 — SHA-1 disallowed for signature generation"
+    remediation: "Reissue with SHA-256 or stronger. SHA-1 collisions are practical."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_weak_signature, eq: true}
+
+  - id: SMS-KEY-001
+    title: "Certificate public key below 1024 bits"
+    severity: critical
+    cap_grade: F
+    standard: "NIST SP 800-131A Rev 2"
+    remediation: "Reissue with an RSA key of at least 2048 bits, or an EC key of at least P-256."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_key_rsa_like, eq: true}
+        - {field: cert_key_bits, lt: 1024}
+
+  - id: SMS-KEY-002
+    title: "Certificate public key below the 2048-bit NIST floor"
+    severity: high
+    cap_grade: C
+    standard: "NIST SP 800-131A Rev 2 — 112-bit security minimum"
+    remediation: "Reissue with an RSA key of at least 2048 bits."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_key_rsa_like, eq: true}
+        - {field: cert_key_bits, lt: 2048}
+        - {field: cert_key_bits, gte: 1024}
+
+  - id: SMS-CERT-006
+    title: "Certificate name does not match the server that presented it"
+    severity: high
+    cap_grade: C
+    standard: "RFC 6125 §6 — identity verification"
+    remediation: "Issue a certificate whose SAN covers the hostname clients connect to."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: name_match, eq: false}
+
+  - id: SMS-CERT-007
+    title: "Certificate expires soon"
+    severity: medium
+    standard: "Operational hygiene; CA/B Forum BR §6.3.2"
+    remediation: "Renew before expiry and automate it."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visible, eq: true}
+        - {field: cert_expired_at_capture, eq: false}
+        - {field: cert_days_to_expiry, lt: 30}
+
+  - id: SMS-CERT-008
+    title: "Certificate revoked according to the stapled OCSP response"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 6960 — OCSP"
+    remediation: "This certificate has been revoked and must not be in service. Replace it immediately."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: revocation, eq: "revoked"}
+
+  # ---------------------------------------------------------- policy vs fact
+  - id: SMS-POL-001
+    title: "Domain publishes an MTA-STS policy but this session was not encrypted"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 8461 — MTA-STS"
+    remediation: "The operator's stated intent is TLS enforcement, yet delivery happened in cleartext. Investigate the path for interference."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: mta_sts_published, eq: true}
+        - {field: encrypted, eq: false}
+
+  - id: SMS-POL-002
+    title: "Domain publishes DANE TLSA records but this session was not encrypted"
+    severity: critical
+    cap_grade: F
+    standard: "RFC 7672 — DANE for SMTP"
+    remediation: "A TLSA record requires TLS. Cleartext delivery to this host indicates downgrade or misconfiguration."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: tlsa_present, eq: true}
+        - {field: encrypted, eq: false}
+
+  # ------------------------------------------------------------ visibility
+  - id: SMS-VIS-001
+    title: "Certificate encrypted by TLS 1.3 — certificate checks not applicable"
+    severity: info
+    standard: "RFC 8446 §4.4 — the Certificate message is encrypted under handshake keys"
+    remediation: "No action. This is a property of TLS 1.3, and a passive sensor cannot read it. Certificate posture for this server must be assessed from a TLS 1.2 session or by an active check."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: cert_visibility, eq: "encrypted_tls13"}
+
+  - id: SMS-VIS-002
+    title: "TLS handshake incomplete in the capture"
+    severity: info
+    standard: "Capture completeness"
+    remediation: "The capture does not contain the whole handshake. Findings for this session are based on partial evidence."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: handshake_complete, eq: false}
+
+  # --------------------------------------------------------------- positive
+  - id: SMS-OK-001
+    title: "Modern TLS with forward secrecy and an AEAD cipher"
+    severity: info
+    standard: "NIST SP 800-52r2; RFC 9325"
+    remediation: "No action required."
+    applies_to: [submission_access, mta_relay]
+    condition:
+      all:
+        - {field: encrypted, eq: true}
+        - {field: tls_version, in: ["1.2", "1.3"]}
+        - {field: forward_secrecy, eq: true}
+        - {field: cipher_aead, eq: true}

@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #000000;
+  --surface: #050a05;
+  --surface-2: #0a140a;
+  --surface-3: #142814;
+  --ink: #e0ffe0;
+  --ink-2: #00ff41;
+  --ink-3: #008f11;
+  --line: #003b00;
+  --line-2: #005f00;
+  --accent: #00ff41;
+  --accent-soft: #002200;
+
+  --crit: #ff003c;
+  --crit-soft: #33000a;
+  --high: #ff9d00;
+  --high-soft: #331d00;
+  --med: #ffea00;
+  --med-soft: #332d00;
+  --ok: #00ff41;
+  --ok-soft: #00330a;
+  --info: #00e5ff;
+  --info-soft: #002a33;
+
+  --shap-pos: #00ff41;
+  --shap-neg: #ff003c;
+
+  color-scheme: dark;
+}
+
+.dark {
+  --paper: #000000;
+  --surface: #050a05;
+  --surface-2: #0a140a;
+  --surface-3: #142814;
+  --ink: #e0ffe0;
+  --ink-2: #00ff41;
+  --ink-3: #008f11;
+  --line: #003b00;
+  --line-2: #005f00;
+  --accent: #00ff41;
+  --accent-soft: #002200;
+
+  --crit: #ff003c;
+  --crit-soft: #33000a;
+  --high: #ff9d00;
+  --high-soft: #331d00;
+  --med: #ffea00;
+  --med-soft: #332d00;
+  --ok: #00ff41;
+  --ok-soft: #00330a;
+  --info: #00e5ff;
+  --info-soft: #002a33;
+
+  --shap-pos: #00ff41;
+  --shap-neg: #ff003c;
+
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  letter-spacing: -0.02em;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--line-2);
+}
+
+.capture-dropzone { 
+  border: 1px dashed var(--line-2); 
+  background: var(--surface); 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.01), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+}
+.capture-dropzone.is-dragging { 
+  border-color: var(--accent);
+  background: var(--surface-2);
+  transform: scale(1.01);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+}
+.capture-format { color: var(--accent); background: var(--surface-2); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.capture-choose { padding: 12px 28px; border-radius: 9999px; background: var(--accent); color: var(--paper); font-size: 14px; font-weight: 600; transition: all 0.2s; box-shadow: 0 4px 14px 0 rgba(0,0,0,0.1); border: 1px solid transparent; }
+.capture-choose:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px 0 rgba(0,0,0,0.15); opacity: 0.9; }
+.capture-choose:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+
+.field { display: block; width: 100%; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 14px; transition: all 0.2s; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.02); }
+.field:focus { border-color: var(--ink-2); outline: none; box-shadow: 0 0 0 1px var(--ink-2); }
+
+.action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 600; transition: all 0.2s; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.02); }
+.action:disabled { opacity: .5; cursor: not-allowed; }
+.action:hover:not(:disabled) { border-color: var(--line-2); background: var(--surface-2); }
+

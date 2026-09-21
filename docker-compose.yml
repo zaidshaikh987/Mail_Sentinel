@@ -1,0 +1,59 @@
+# MailSentinel — full stack.
+#
+#   docker compose up --build
+#
+# Brings up PostgreSQL and the application (Spring Boot serving both the REST API
+# and the built React dashboard on http://localhost:8080).
+#
+# The app image bundles the Python analysis engine, its trained model, the IANA
+# cipher registry, the rule base and a CA bundle — so once built it makes no
+# network calls at runtime. To prove that in front of an audience, run the whole
+# application with the network switched off and use it normally:
+#
+#   docker compose run --rm --no-deps --network none -p 8080:8080 app
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sms-postgres
+    environment:
+      POSTGRES_DB: mailsentinel
+      POSTGRES_USER: sms
+      POSTGRES_PASSWORD: sms
+    ports:
+      - "5432:5432"
+    volumes:
+      - sms-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sms -d mailsentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sms-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      SMS_DB_URL: jdbc:postgresql://postgres:5432/mailsentinel
+      SMS_DB_USER: sms
+      SMS_DB_PASSWORD: sms
+      # Nothing about the engine is configured here. The image sets SMS_PYTHON
+      # to the virtualenv the engine was installed into, and that is the only
+      # engine setting there is — identical in meaning to the one a developer
+      # exports locally.
+    ports:
+      - "8080:8080"
+    volumes:
+      - sms-uploads:/app/data/uploads
+      # Mounted read-only so the demo captures can be analysed without copying.
+      - ./demo-pcaps:/app/demo-pcaps:ro
+
+volumes:
+  sms-pgdata:
+  sms-uploads:

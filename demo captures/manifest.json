@@ -1,0 +1,201 @@
+{
+  "synthetic": true,
+  "ml_used_for_verification": false,
+  "limitation": "D and E are not reachable for meaningful complete sessions under the current rule/score combination; grades were not modified for demos.",
+  "captures": [
+    {
+      "filename": "A-plus - Normal configuration - TLS 1.3 IMAPS.pcap",
+      "expected_grade": "A+",
+      "scenario": "Modern TLS 1.3 with X25519 and AES-256-GCM. Certificate is encrypted and cannot be validated passively.",
+      "synthetic": true,
+      "sha256": "690399c67b95e414450f40912d708288462b9cedd0ff3443f022e2353ad4ef2a",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-OK-001",
+        "SMS-VIS-001"
+      ],
+      "observed_rules": [
+        "SMS-OK-001",
+        "SMS-VIS-001"
+      ]
+    },
+    {
+      "filename": "A-plus - Normal configuration - Trusted TLS 1.2 IMAPS.pcap",
+      "expected_grade": "A+",
+      "scenario": "TLS 1.2 ECDHE and AES-256-GCM with a genuine public certificate chain valid at capture time.",
+      "synthetic": true,
+      "sha256": "e4fbdc93d0012a783b7f375dd4811b1d1cb22aeb4fe635cb3d4842a73a681939",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-OK-001"
+      ],
+      "observed_rules": [
+        "SMS-OK-001"
+      ]
+    },
+    {
+      "filename": "A - Certificate renewal due soon.pcap",
+      "expected_grade": "A",
+      "scenario": "Strong TLS 1.2 but the public leaf certificate expires in ten days at capture time.",
+      "synthetic": true,
+      "sha256": "eb3c137a73db4fc00a7fb49d778521837a575f0f583601b8d155b9d0a8e86e59",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-CERT-007"
+      ],
+      "observed_rules": [
+        "SMS-CERT-007",
+        "SMS-OK-001"
+      ]
+    },
+    {
+      "filename": "B - Legacy AES-128 CBC cipher.pcap",
+      "expected_grade": "B",
+      "scenario": "TLS 1.2 with forward secrecy and a trusted chain, but AES-128-CBC rather than AEAD.",
+      "synthetic": true,
+      "sha256": "fe2920222f03a550f86d0db36ef230388fe378f8f55c438ed19d75e4ca52838c",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-CIPH-005"
+      ],
+      "observed_rules": [
+        "SMS-CIPH-005",
+        "SMS-CIPH-006"
+      ]
+    },
+    {
+      "filename": "B - Legacy AES-256 CBC cipher.pcap",
+      "expected_grade": "B",
+      "scenario": "TLS 1.2 with forward secrecy and a trusted chain, but AES-256-CBC rather than AEAD.",
+      "synthetic": true,
+      "sha256": "bc131d472a5efb72fee2623d2b7bbc7e8eaf1ba12a15924852cec8e14df466db",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-CIPH-005"
+      ],
+      "observed_rules": [
+        "SMS-CIPH-005",
+        "SMS-CIPH-006"
+      ]
+    },
+    {
+      "filename": "C - Self-signed mail server certificate.pcap",
+      "expected_grade": "C",
+      "scenario": "Modern TLS 1.2 encryption with an untrusted self-signed mail certificate.",
+      "synthetic": true,
+      "sha256": "6d36926568e408ffd9b2f925cf6777657c98f2c9c61a654e82743b107fa8f81f",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-CERT-003"
+      ],
+      "observed_rules": [
+        "SMS-CERT-003",
+        "SMS-OK-001"
+      ]
+    },
+    {
+      "filename": "C - Deprecated TLS 1.0 configuration.pcap",
+      "expected_grade": "C",
+      "scenario": "TLS 1.0 with ECDHE and CBC. The protocol version is deprecated.",
+      "synthetic": true,
+      "sha256": "fae6b50e856cf731b187d1a0e82047b17e8f1e26aedc24d30a2ad71f51c23e37",
+      "sessions": 1,
+      "expected_rules": [
+        "MS-PROTO-001"
+      ],
+      "observed_rules": [
+        "SMS-CIPH-005",
+        "SMS-CIPH-006",
+        "MS-PROTO-001"
+      ]
+    },
+    {
+      "filename": "F - STARTTLS stripping attack simulation.pcap",
+      "expected_grade": "F",
+      "scenario": "Synthetic STARTTLS-to-XXXXXXXX substitution followed by dummy cleartext AUTH. Detector reports evidence consistent with stripping, not proof of a real attack.",
+      "synthetic": true,
+      "sha256": "fc75effd9693e24deaa3db7bdf2736dd22213f23adf7ffbf35ac048daec41ce9",
+      "sessions": 1,
+      "expected_rules": [
+        "MS-STRIP-001",
+        "SMS-AUTH-001"
+      ],
+      "observed_rules": [
+        "SMS-AUTH-001",
+        "MS-PROTO-003",
+        "MS-STRIP-001"
+      ]
+    },
+    {
+      "filename": "F - Expired mail server certificate.pcap",
+      "expected_grade": "F",
+      "scenario": "TLS 1.2 with a public certificate that expired ten days before capture time.",
+      "synthetic": true,
+      "sha256": "d947d57a4c2e3faae65797311de2a8b07d84659b42e85450a8057f581ffa7397",
+      "sessions": 1,
+      "expected_rules": [
+        "SMS-CERT-001"
+      ],
+      "observed_rules": [
+        "SMS-CERT-001",
+        "SMS-OK-001"
+      ]
+    },
+    {
+      "filename": "Before - Weak mail servers - 6 sessions.pcap",
+      "expected_grade": "F",
+      "synthetic": true,
+      "scenario": "Three matching IMAPS servers, two clients each; CBC, TLS 1.0 and expired self-signed certificates before remediation.",
+      "sha256": "d55904bfe803325efe9fffba4262c1459787ee34be99edac7559d77f4d801aae",
+      "sessions": 6,
+      "session_grades": [
+        "B",
+        "B",
+        "C",
+        "C",
+        "F",
+        "F"
+      ],
+      "comparison_pair": "mail-server-remediation",
+      "phase": "before",
+      "expected_rules": [
+        "SMS-CIPH-005",
+        "MS-PROTO-001",
+        "SMS-CERT-001",
+        "SMS-CERT-003"
+      ],
+      "observed_rules": [
+        "SMS-CERT-001",
+        "SMS-CERT-003",
+        "SMS-CIPH-005",
+        "SMS-CIPH-006",
+        "SMS-OK-001",
+        "MS-PROTO-001"
+      ]
+    },
+    {
+      "filename": "After - Remediated mail servers - 6 sessions.pcap",
+      "expected_grade": "A+",
+      "synthetic": true,
+      "scenario": "Three matching IMAPS servers, two clients each; trusted certificates and TLS 1.2 AEAD after remediation.",
+      "sha256": "5216ac655954cb2d151d9fb4b15f46cdfbf65d849ee6562c92c5def3d2b1d5c0",
+      "sessions": 6,
+      "session_grades": [
+        "A+",
+        "A+",
+        "A+",
+        "A+",
+        "A+",
+        "A+"
+      ],
+      "comparison_pair": "mail-server-remediation",
+      "phase": "after",
+      "expected_rules": [
+        "SMS-OK-001"
+      ],
+      "observed_rules": [
+        "SMS-OK-001"
+      ]
+    }
+  ]
+}

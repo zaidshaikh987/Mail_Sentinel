@@ -1,0 +1,20 @@
+flowchart TD
+    USER[Analyst creates an investigation] --> UI[React dashboard: upload a PCAP]
+    UI --> API[Spring Boot API]
+    API --> FILE[(Original capture + SHA-256)]
+    API --> QUEUE[(Persistent job queue)]
+    QUEUE --> WORKER[Background worker]
+    FILE --> ENGINE[Python forensic engine]
+    WORKER --> ENGINE
+    ENGINE --> EVIDENCE[Rebuild sessions and extract TLS evidence]
+    EVIDENCE --> RULES[Rules: known weaknesses and grades]
+    EVIDENCE --> COVERAGE[Coverage: what could be assessed]
+    EVIDENCE --> AI[AI: posture estimates and unusual behavior]
+    HISTORY[(Earlier investigation reports)] --> AI
+    RULES --> REPORT[(Stored report and version hashes)]
+    COVERAGE --> REPORT
+    AI --> REPORT
+    REPORT --> HISTORY
+    REPORT --> VIEW[Dashboard, session evidence and exports]
+    VIEW --> COMPARE[Compare captures and track remediation]
+    COMPARE --> UI

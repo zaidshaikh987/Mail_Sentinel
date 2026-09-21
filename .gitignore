@@ -1,0 +1,114 @@
+# Python environments, caches and build output
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+coverage.xml
+
+# Java and Maven
+target/
+*.class
+.toolchain/
+.m2repo/
+
+# Node and frontend tooling
+node_modules/
+/frontend/node/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Generated models; rebuild with scripts/setup.sh or the training CLI
+/engine/mailsentinel/ml/artifacts/
+*.joblib
+
+# Runtime data, reports and local working files
+data/
+uploads/
+out/
+output/
+/lab/output/
+/.pptx-build/
+/_to_delete/
+*.log
+*.pid
+*.pid.lock
+*.mv.db
+*.trace.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Captures may contain credentials; only curated demos and test fixtures belong in Git
+*.pcap
+*.pcapng
+*.cap
+*.pcap.gz
+*.pcapng.gz
+*.cap.gz
+!/demo-pcaps/**
+!/demo captures/**
+!/engine/tests/fixtures/**
+
+# Local configuration and credentials; sanitized templates remain versioned
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+/backend/src/main/resources/application-local.yml
+/backend/src/main/resources/application-local.yaml
+/backend/src/main/resources/application-local.properties
+
+# Editor and assistant workspace metadata
+.idea/
+.vscode/
+.codex/
+.agents/
+.claude/
+.cursor/
+.aider*
+.continue/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.cursorrules
+.copilot-instructions.md
+.github/copilot-instructions.md
+*.iml
+*.swp
+*.swo
+*~
+
+# OS metadata and local transfer archives
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.sms-*.tgz
+*.tgz

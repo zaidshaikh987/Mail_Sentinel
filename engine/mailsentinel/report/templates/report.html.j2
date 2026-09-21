@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MailSentinel — {{ r.capture.filename }}</title>
+<style>
+  :root {
+    --bg: #050505;
+    --surface: #0a0a0a;
+    --surface-2: #111111;
+    --surface-3: #1a1a1a;
+    --border: #222222;
+    --border-hl: #333333;
+    
+    --text-main: #e0e0e0;
+    --text-muted: #888888;
+    
+    --accent: #00ff41;
+    --accent-glow: rgba(0, 255, 65, 0.2);
+    
+    --crit: #ff2a2a; 
+    --crit-soft: rgba(255, 42, 42, 0.1);
+    --high: #ff9900; 
+    --high-soft: rgba(255, 153, 0, 0.1);
+    --med: #f1c40f; 
+    --med-soft: rgba(241, 196, 15, 0.1);
+    --ok: #00ff41; 
+    --ok-soft: rgba(0, 255, 65, 0.1);
+    --info: #3498db; 
+    --info-soft: rgba(52, 152, 219, 0.1);
+    
+    --font-mono: "JetBrains Mono", "Fira Code", Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  @media print {
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface-2: #f8f9fa;
+      --surface-3: #eeeeee;
+      --border: #dddddd;
+      --border-hl: #cccccc;
+      --text-main: #000000;
+      --text-muted: #555555;
+    }
+    body { display: block !important; }
+    .sidebar { display: none !important; }
+    .main-content { margin: 0 !important; width: 100% !important; padding: 0 !important; }
+    .search-input { display: none !important; }
+    .card { page-break-inside: avoid; margin-bottom: 20px; }
+    @page { margin: 15mm; }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-main);
+    font-family: var(--font-sans); line-height: 1.6; display: flex;
+  }
+  
+  a { color: var(--info); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 260px; height: 100vh; position: fixed; top: 0; left: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: 32px 24px; overflow-y: auto; display: flex; flex-direction: column;
+    z-index: 100;
+  }
+  .brand { font-family: var(--font-mono); font-size: 14px; font-weight: bold; color: var(--accent); margin-bottom: 32px; letter-spacing: 1.5px; }
+  .nav-menu { display: flex; flex-direction: column; gap: 8px; }
+  .nav-menu a {
+    color: var(--text-muted); padding: 10px 14px; border-radius: 6px;
+    font-size: 14px; transition: 0.2s; font-weight: 500;
+  }
+  .nav-menu a:hover { background: var(--surface-2); color: var(--text-main); text-decoration: none; border-left: 2px solid var(--accent); }
+
+  /* Main */
+  .main-content {
+    margin-left: 260px; padding: 48px; width: calc(100% - 260px); max-width: 1400px;
+  }
+  
+  header { margin-bottom: 40px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
+  h1 { font-size: 32px; margin: 0 0 12px; font-weight: 600; color: var(--text-main); }
+  .meta-info { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+  
+  h2 { font-size: 22px; margin: 48px 0 20px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 10px; color: var(--text-main); }
+  h3 { font-size: 16px; margin: 24px 0 12px; color: var(--text-main); }
+
+  /* KPIs */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-bottom: 40px; }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); padding: 24px; border-radius: 12px; text-align: center; }
+  .kpi-card.highlight { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+  .kpi-val { font-size: 42px; font-weight: 700; font-family: var(--font-mono); margin-bottom: 8px; color: var(--text-main); }
+  .kpi-card.highlight .kpi-val { color: var(--accent); }
+  .kpi-lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; }
+
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 40px; }
+  .chart-container { background: var(--surface); border: 1px solid var(--border); padding: 30px; border-radius: 12px; }
+  
+  /* Stacked Bar */
+  .stacked-bar { display: flex; height: 32px; border-radius: 6px; overflow: hidden; background: var(--surface-2); margin: 20px 0; border: 1px solid var(--border); }
+  .stacked-bar div { transition: width 0.5s ease-out; }
+  .stacked-bar div:hover { filter: brightness(1.2); }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; margin-top: 20px; }
+  .legend span { display: flex; align-items: center; gap: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; }
+
+  /* Bar Chart */
+  .bar-chart { display: flex; gap: 12px; align-items: flex-end; height: 160px; margin-top: 24px; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1; }
+  .bar-track { width: 100%; max-width: 48px; height: 110px; background: var(--surface-2); border-radius: 6px; position: relative; overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill { width: 100%; position: absolute; bottom: 0; left: 0; border-radius: 4px; transition: height 0.5s ease-out; }
+  .bar-lbl { font-family: var(--font-mono); font-weight: bold; font-size: 14px; color: var(--text-muted); }
+  .bar-val { font-size: 12px; color: var(--text-main); font-weight: bold; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 32px; }
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th { background: var(--surface-2); color: var(--text-muted); padding: 14px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); font-family: var(--font-mono); white-space: nowrap; }
+  td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+  tbody tr:hover { background: var(--surface-2); }
+  tbody tr:last-child td { border-bottom: none; }
+  
+  .search-input { width: 100%; padding: 14px 20px; background: var(--surface); border: 1px solid var(--border); color: var(--text-main); border-radius: 8px; margin-bottom: 16px; font-family: var(--font-sans); font-size: 14px; transition: border-color 0.2s; }
+  .search-input:focus { outline: none; border-color: var(--accent); }
+
+  /* Pills & Utilities */
+  .mono { font-family: var(--font-mono); font-size: 13px; }
+  .muted { color: var(--text-muted); }
+  .pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-mono); }
+  .s-critical { background: var(--crit-soft); color: var(--crit); border: 1px solid var(--crit); }
+  .s-high { background: var(--high-soft); color: var(--high); border: 1px solid var(--high); }
+  .s-medium { background: var(--med-soft); color: var(--med); border: 1px solid var(--med); }
+  .s-low { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border-hl); }
+  .s-info { background: var(--info-soft); color: var(--info); border: 1px solid var(--info); }
+  .s-ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok); }
+  
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .finding { border-left: 4px solid var(--border-hl); padding: 16px 20px; margin: 16px 0; background: var(--surface-2); border-radius: 0 8px 8px 0; }
+  .finding.critical { border-left-color: var(--crit); }
+  .finding.high { border-left-color: var(--high); }
+  .finding.medium { border-left-color: var(--med); }
+  .finding.info { border-left-color: var(--info); }
+  .finding-title { font-weight: 600; font-size: 15px; margin-bottom: 6px; display: flex; align-items: center; gap: 12px; }
+  .finding-meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+  .finding-remedy { background: var(--surface-3); padding: 12px 16px; border-radius: 6px; font-size: 14px; border: 1px solid var(--border); }
+  
+  .note { border: 1px solid var(--border); border-left: 4px solid var(--high); background: var(--high-soft); padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 14px; }
+  
+  pre { font-family: var(--font-mono); font-size: 12px; line-height: 1.6; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="brand">SECUREMAILSCOPE</div>
+  <div class="nav-menu">
+    <a href="#overview">Overview & KPIs</a>
+    <a href="#visuals">Visual Summary</a>
+    <a href="#servers">Assessed Servers</a>
+    <a href="#remediation">Prioritized Remediation</a>
+    <a href="#sessions">Session Details</a>
+  </div>
+</div>
+
+<div class="main-content">
+  <header id="overview">
+    <h1>Cryptographic Posture Report</h1>
+    <div class="meta-info">
+      <b>File:</b> {{ r.capture.filename }} ({{ r.capture.format }})<br>
+      <b>Size:</b> {{ '{:,}'.format(r.capture.bytes) }} bytes | <b>Packets:</b> {{ r.capture.packet_count }}<br>
+      <b>Hash:</b> {{ r.capture.sha256 }}<br>
+      <b>Captured:</b> {{ r.capture.first_packet_time or 'unknown' }} | <b>Generated:</b> {{ r.generated_at }}
+    </div>
+  </header>
+
+  {% if r.coverage %}
+  <div class="note" style="border-left-color: var(--info); background: var(--info-soft)">
+    <b>Coverage:</b> {{ r.coverage.assessed_checks }} / {{ r.coverage.applicable_checks }} applicable checks assessed. Coverage is separate from the grade.
+  </div>
+  {% endif %}
+
+  <div class="kpi-grid">
+    <div class="kpi-card highlight">
+      <div class="kpi-val">{{ r.overall_grade }}</div>
+      <div class="kpi-lbl">Overall Grade</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val">{{ r.counts.assets }}</div>
+      <div class="kpi-lbl">Servers</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val">{{ r.counts.sessions }}</div>
+      <div class="kpi-lbl">Sessions</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-val" style="color: var(--crit)">{{ r.counts.critical }}</div>
+      <div class="kpi-lbl">Critical Risks</div>
+    </div>
+  </div>
+
+  <h2 id="visuals">Visual Summary</h2>
+  
+  {% set total_findings = (r.counts.critical|default(0)) + (r.counts.high|default(0)) + (r.counts.medium|default(0)) + (r.counts.low|default(0)) %}
+  {% set crit_pct = (r.counts.critical / total_findings * 100) if total_findings > 0 else 0 %}
+  {% set high_pct = (r.counts.high / total_findings * 100) if total_findings > 0 else 0 %}
+  {% set med_pct = (r.counts.medium / total_findings * 100) if total_findings > 0 else 0 %}
+  {% set low_pct = (r.counts.low / total_findings * 100) if total_findings > 0 else 0 %}
+
+  {% set g_counts = {'A+':0, 'A':0, 'B':0, 'C':0, 'D':0, 'E':0, 'F':0} %}
+  {% for a in r.assets %}
+    {% set letter = a.grade.letter %}
+    {% if letter in g_counts %}
+      {% set _ = g_counts.update({letter: g_counts[letter] + 1}) %}
+    {% endif %}
+  {% endfor %}
+
+  <div class="chart-grid">
+    <div class="chart-container">
+      <h3 style="margin-top:0">Findings Distribution</h3>
+      {% if total_findings > 0 %}
+      <div class="stacked-bar">
+        <div style="width: {{ crit_pct }}%; background: var(--crit)" title="Critical: {{ r.counts.critical }}"></div>
+        <div style="width: {{ high_pct }}%; background: var(--high)" title="High: {{ r.counts.high }}"></div>
+        <div style="width: {{ med_pct }}%; background: var(--med)" title="Medium: {{ r.counts.medium }}"></div>
+        <div style="width: {{ low_pct }}%; background: var(--border-hl)" title="Low: {{ r.counts.low }}"></div>
+      </div>
+      <div class="legend">
+        <span><i style="background: var(--crit)"></i> Critical ({{ r.counts.critical }})</span>
+        <span><i style="background: var(--high)"></i> High ({{ r.counts.high }})</span>
+        <span><i style="background: var(--med)"></i> Medium ({{ r.counts.medium }})</span>
+        <span><i style="background: var(--border-hl)"></i> Low ({{ r.counts.low }})</span>
+      </div>
+      {% else %}
+      <p class="muted">No findings detected.</p>
+      {% endif %}
+    </div>
+
+    <div class="chart-container">
+      <h3 style="margin-top:0">Asset Grades</h3>
+      <div class="bar-chart">
+        {% for letter, count in g_counts.items() %}
+          {% set height = (count / r.counts.assets * 100) if r.counts.assets > 0 else 0 %}
+          <div class="bar-col">
+            <span class="bar-val">{{ count }}</span>
+            <div class="bar-track">
+              <div class="bar-fill" style="height: {{ height }}%; background: {% if letter in ['A+','A','B'] %}var(--ok){% elif letter in ['C','D'] %}var(--high){% else %}var(--crit){% endif %}"></div>
+            </div>
+            <span class="bar-lbl">{{ letter }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <h2 id="servers">Assessed Servers</h2>
+  <input type="text" id="asset-search" class="search-input" placeholder="Filter servers by host, port, or grade...">
+  <div class="table-wrap">
+    <table id="asset-table">
+      <thead>
+        <tr>
+          <th>Server</th>
+          <th>Protocol / Role</th>
+          <th>Grade</th>
+          <th>Score</th>
+          <th>TLS Version</th>
+          <th>Sessions</th>
+          <th>Exposure</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for a in r.assets %}
+        <tr>
+          <td class="mono"><b>{{ a.host }}:{{ a.port }}</b></td>
+          <td class="mono">{{ a.protocol }}<br><span class="muted" style="font-size:11px">{{ a.role }}</span></td>
+          <td>
+            <span class="pill s-{{ 'critical' if a.grade.letter in ['F','E'] else 'high' if a.grade.letter in ['D','C'] else 'info' }}">{{ a.grade.letter }}</span>
+            {% if not a.grade.trusted %}<span class="pill s-low" style="margin-left:6px">Untrusted</span>{% endif %}
+          </td>
+          <td class="mono">{{ "%.2f"|format(a.grade.raw_score) }}</td>
+          <td class="mono">{% if a.best_tls %}{{ a.worst_tls }}{% if a.version_spread %} → {{ a.best_tls }}{% endif %}{% else %}<span class="muted">None</span>{% endif %}</td>
+          <td class="mono">{{ a.session_count }}</td>
+          <td class="mono">{{ "%.2f"|format(a.exposure_score) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="remediation">Prioritized Remediation</h2>
+  {% if r.remediation %}
+  <input type="text" id="remedy-search" class="search-input" placeholder="Filter remediation tasks...">
+  <div class="table-wrap">
+    <table id="remedy-table">
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Rule & Action</th>
+          <th>Affected Servers</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for m in r.remediation %}
+        <tr>
+          <td><span class="pill s-{{ m.severity }}">{{ m.severity }}</span></td>
+          <td>
+            <div style="font-weight:600; margin-bottom:4px; color:var(--text-main)">{{ m.title }}</div>
+            <div class="mono muted" style="margin-bottom:8px">{{ m.rule_id }} · {{ m.standard }}</div>
+            <div style="font-size:13px">{{ m.action }}</div>
+          </td>
+          <td class="mono muted" style="max-width:250px; white-space:pre-wrap; font-size:12px;">{{ m.affected_assets|join(', ') }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted" style="padding: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;">No actionable findings. Great job!</p>
+  {% endif %}
+
+  <h2 id="sessions">Session Details</h2>
+  {% for s in r.sessions %}
+  <div class="card">
+    <h3 style="margin-top:0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <span>Session #{{ s.tcp_stream }} · {{ s.protocol|upper }} over {{ s.tls_mode }}</span>
+      <span class="pill s-{{ 'critical' if s.grade.letter in ['F','E'] else 'high' if s.grade.letter in ['D','C'] else 'info' }}" style="font-size:14px">{{ s.grade.letter }}</span>
+    </h3>
+    
+    <div class="mono muted" style="margin-bottom:20px; padding-bottom: 15px; border-bottom: 1px solid var(--border);">
+      {{ s.client.ip }}:{{ s.client.port }} → {{ s.server.ip }}:{{ s.server.port }} | Frames: {{ s.first_frame }}–{{ s.last_frame }} | Duration: {{ "%.2f"|format(s.duration_seconds) }}s
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <table>
+        <thead><tr><th colspan="2">Cryptography</th><th colspan="2">Identity & Certificate</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="muted">Version</td><td class="mono">{{ s.tls_version or 'Cleartext' }}</td>
+            <td class="muted">Visibility</td><td class="mono">{{ s.cert_visibility }}</td>
+          </tr>
+          <tr>
+            <td class="muted">Cipher</td><td class="mono">{{ s.cipher_suite or '—' }}</td>
+            <td class="muted">Subject</td><td class="mono" style="max-width:200px; overflow-wrap:break-word;">{{ s.chain[0].subject if s.chain else '—' }}</td>
+          </tr>
+          <tr>
+            <td class="muted">Key Exchange</td><td class="mono">{{ s.kex or '—' }}{% if s.kex_bits %} ({{ s.kex_bits }}b){% endif %}</td>
+            <td class="muted">Issuer</td><td class="mono" style="max-width:200px; overflow-wrap:break-word;">{{ s.chain[0].issuer if s.chain else '—' }}</td>
+          </tr>
+          <tr>
+            <td class="muted">Forward Secrecy</td><td class="mono">{{ 'Yes' if s.forward_secrecy else 'No' if s.forward_secrecy is not none else '—' }}</td>
+            <td class="muted">Status</td>
+            <td>
+              {% if s.chain %}
+                {% if s.chain[0].expired_at_capture %}<span class="pill s-critical">Expired</span>
+                {% else %}<span class="pill s-ok">Valid</span>{% endif %}
+              {% else %}<span class="mono muted">—</span>{% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {% if s.capability_mangled %}
+    <div class="note" style="border-left-color: var(--high); background: var(--high-soft)">
+      <b style="color:var(--high)">Downgrade Evidence:</b> The capability list contains <code class="mono">{{ s.mangled_token }}</code> in place of STARTTLS.
+    </div>
+    {% endif %}
+    
+    {% if s.cleartext_auth %}
+    <div class="note" style="border-left-color:var(--crit); background:var(--crit-soft);">
+      <b style="color:var(--crit)">Credentials Exposed:</b> {{ s.cleartext_auth.mechanism }} authentication for <code class="mono">{{ s.cleartext_auth.username or 'unknown' }}</code> was sent unencrypted (Frame {{ s.cleartext_auth.frame }}). SHA-256: <code class="mono">{{ s.cleartext_auth.secret_sha256[:24] }}…</code>
+    </div>
+    {% endif %}
+
+    {% for f in s.findings %}
+    <div class="finding {{ f.severity }}">
+      <div class="finding-title">
+        <span class="pill s-{{ f.severity }}">{{ f.severity }}</span> <span class="mono">{{ f.rule_id }}</span> — {{ f.title }}
+      </div>
+      <div class="finding-meta">{{ f.standard }} · Frames: {{ f.evidence.frames|join(', ') }}</div>
+      {% if f.detail %}<p style="margin:8px 0 12px; font-size:14px; color:var(--text-main);">{{ f.detail }}</p>{% endif %}
+      <div class="finding-remedy"><b>Remediation:</b> {{ f.remediation }}</div>
+    </div>
+    {% endfor %}
+
+    {% if s.ml %}
+    <h4 style="margin:24px 0 10px;">AI Anomaly Assessment</h4>
+    <div class="mono muted" style="margin-bottom: 12px;">
+      Posture: {{ s.ml.risk_class }} | Risk Score: {{ "%.2f"|format(s.ml.risk_score) }} | Anomaly: {{ 'Yes' if s.ml.anomaly else 'No' }}
+    </div>
+    <p style="font-size:14px; color:var(--text-main);">{{ s.ml.explanation }}</p>
+    {% endif %}
+
+    {% if s.command_transcript %}
+    <h4 style="margin:24px 0 10px;">Cleartext Transcript</h4>
+    <pre>{% for line in s.command_transcript[:15] %}{{ line }}
+{% endfor %}{% if s.command_transcript|length > 15 %}... (truncated){% endif %}</pre>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <footer style="margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); text-align: center;">
+    MailSentinel {{ r.tool_version }} · SIH 26159 · Generated {{ r.generated_at }}
+  </footer>
+</div>
+
+<script>
+function filterTable(inputId, tableId) {
+  const input = document.getElementById(inputId);
+  const table = document.getElementById(tableId);
+  if (!input || !table) return;
+  input.addEventListener('keyup', function() {
+    const filter = input.value.toLowerCase();
+    const rows = table.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+      row.style.display = row.innerText.toLowerCase().includes(filter) ? '' : 'none';
+    });
+  });
+}
+window.addEventListener('DOMContentLoaded', () => {
+  filterTable('asset-search', 'asset-table');
+  filterTable('remedy-search', 'remedy-table');
+});
+</script>
+
+<script>
+  if (new URLSearchParams(window.location.search).get('print') === '1') {
+    window.addEventListener('load', () => window.print());
+  }
+</script>
+
+</body>
+</html>

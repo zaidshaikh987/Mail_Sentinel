@@ -1,0 +1,16 @@
+# A clean presentation workspace. Existing application volumes remain untouched.
+# Start: docker compose -f docker-compose.yml -f compose.demo.yml up -d --build
+# Return to normal data: docker compose up -d
+services:
+  postgres:
+    volumes:
+      - sms-demo-pgdata:/var/lib/postgresql/data
+  app:
+    volumes:
+      - sms-demo-uploads:/app/data/uploads
+      - ./demo-pcaps:/app/demo-pcaps:ro
+      - ./demo captures:/app/demo captures:ro
+
+volumes:
+  sms-demo-pgdata:
+  sms-demo-uploads:

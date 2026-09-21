@@ -1,0 +1,8 @@
+services:
+  capture-lab:
+    build: .
+    network_mode: none
+    cap_add: [NET_RAW, NET_ADMIN]
+    volumes:
+      - ./output:/output
+    # Only loopback traffic inside this disposable container is captured.

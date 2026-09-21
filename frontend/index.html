@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      No webfonts by design.
+
+      MailSentinel is meant to run inside an air-gapped facility, and a
+      stylesheet link to a font CDN is an outbound request like any other — it
+      would make the "no network at runtime" claim untrue and leave the UI
+      rendering in fallback faces exactly where it matters most. The type stack
+      below uses faces already present on the host, so the bundle issues zero
+      external requests. To use branded faces, self-host the woff2 files under
+      public/fonts and add an @font-face block to src/index.css.
+    -->
+    <title>MailSentinel</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

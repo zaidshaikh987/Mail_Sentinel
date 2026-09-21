@@ -1,0 +1,74 @@
+# MailSentinel backend configuration.
+#
+# The default profile runs on an embedded H2 database in PostgreSQL
+# compatibility mode, so `mvn spring-boot:run` works on a clean machine with no
+# database installed.  PostgreSQL is the production target — start it with
+# `docker compose up -d postgres` and run with `--spring.profiles.active=postgres`.
+
+spring:
+  application:
+    name: mailsentinel
+  datasource:
+    url: jdbc:h2:file:./data/smsdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema; JPA only checks it
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          lob:
+            non_contextual_creation: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+sms:
+  engine:
+    # The one setting that matters: an interpreter with the engine installed.
+    # ./scripts/setup.sh creates .venv and prints the export line.
+    # There is deliberately no "engine path" any more — the engine is an
+    # installed package, found by import, so local and Docker run one copy of
+    # exactly the same code.
+    python: ${SMS_PYTHON:python3}
+    demo-dir: ${SMS_DEMO_DIR:demo-pcaps}
+    upload-dir: ${SMS_UPLOAD_DIR:./data/uploads}
+    timeout-seconds: 300
+    ml-enabled: true
+    max-upload-bytes: 2147483648
+
+logging:
+  level:
+    in.gov.ntro.sih.sms: INFO
+    org.hibernate.SQL: WARN
+
+---
+# PostgreSQL — the production target.
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${SMS_DB_URL:jdbc:postgresql://localhost:5432/mailsentinel}
+    driver-class-name: org.postgresql.Driver
+    username: ${SMS_DB_USER:sms}
+    password: ${SMS_DB_PASSWORD:sms}
+  h2:
+    console:
+      enabled: false

@@ -1,0 +1,34 @@
+# Test profile: an in-memory database and the engine from the source tree.
+#
+# H2 runs in PostgreSQL compatibility mode and Flyway applies the *real*
+# migration, so the tests exercise the production schema rather than an
+# ORM-generated approximation of it. No database needs to be installed.
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:smstest;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    clean-disabled: false
+
+sms:
+  engine:
+    python: ${SMS_PYTHON:python3}
+    path: ${SMS_ENGINE_PATH:../engine}
+    upload-dir: ${java.io.tmpdir}/sms-test-uploads
+    timeout-seconds: 180
+    ml-enabled: false          # keep the suite fast; the engine tests cover ML
+
+logging:
+  level:
+    org.springframework.web: WARN
+    in.gov.ntro.sih.sms: INFO
+
+# Tests explicitly drive the worker so queued-state assertions are deterministic.
+sms.jobs.enabled: false
