@@ -103,35 +103,30 @@ MailSentinel uses Machine Learning specifically for **Anomaly Detection**, never
 
 ---
 
-## 6. Installation & Setup
+## 6. Installation & Setup (Dockerized)
 
-MailSentinel requires **Python 3.10+**, **Java 17+**, and **Node.js 18+**.
+MailSentinel is now fully containerized. You do not need to install Python, Java, or Node.js locally on your host machine to run the platform.
 
-### 1. Set up the Python Engine
-```bash
-# Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+### Quick Start with Docker Compose
 
-# Install the engine and its ML dependencies
-pip install -e "./engine[dev,ml]"
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/zaidshaikh987/Mail_Sentinel.git
+   cd Mail_Sentinel
+   ```
 
-### 2. Set up the React Dashboard
-```bash
-cd frontend
-npm install
-npm run build
-cd ..
-```
+2. **Launch the entire stack:**
+   This single command builds the React dashboard, compiles the Spring Boot API, sets up the Python forensic engine, trains the ML model, and boots the PostgreSQL database.
+   ```bash
+   docker compose up --build -d
+   ```
 
-### 3. Run the API & Workers
-*(Ensure you have Maven installed)*
-```bash
-export MS_PYTHON="$PWD/.venv/bin/python" # Tell Java where the engine is
-mvn -f backend/pom.xml spring-boot:run
-```
-*(On Windows PowerShell, use `$env:MS_PYTHON="$PWD\.venv\Scripts\python.exe"` before running Maven).*
+3. **Access the Dashboard:**
+   Open your browser and navigate to **http://localhost:8080**.
+
+### Architecture inside Docker
+- `sms-postgres`: A lightweight Postgres 16 database holding investigation metadata.
+- `sms-app`: A single unified container that serves the React frontend, runs the Spring Boot REST API, and executes the Python PCAP engine in an isolated virtual environment.
 
 ---
 

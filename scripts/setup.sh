@@ -113,14 +113,14 @@ if [[ $install_ok -eq 0 ]]; then
 fi
 
 # --- verify -----------------------------------------------------------------
-# `import securemailscope` proves nothing: the package __init__ is empty and
+# `import mailsentinel` proves nothing: the package __init__ is empty and
 # succeeds with no dependencies present. Importing the pipeline is the check
 # that actually exercises cryptography, yaml and the whole analysis chain.
 say "verifying"
-if ! "$VPY" -c 'import securemailscope.pipeline' 2>/tmp/sms-verify.$$; then
-  die "engine imported but cannot run: $(tail -1 /tmp/sms-verify.$$)"
+if ! "$VPY" -c 'import mailsentinel.pipeline' 2>/tmp/ms-verify.$$; then
+  die "engine imported but cannot run: $(tail -1 /tmp/ms-verify.$$)"
 fi
-rm -f /tmp/sms-verify.$$
+rm -f /tmp/ms-verify.$$
 
 HAS_ML=$("$VPY" -c '
 try:
@@ -132,9 +132,9 @@ except Exception:
 # repo was built by whichever version made it. Retrain when this environment
 # differs — deterministic (seed 26159) and about half a minute.
 if [[ "$HAS_ML" == "yes" ]]; then
-  if ! "$VPY" -c 'from securemailscope.ml.predict import load_model; load_model()' 2>/dev/null; then
+  if ! "$VPY" -c 'from mailsentinel.ml.predict import load_model; load_model()' 2>/dev/null; then
     say "training the model for this scikit-learn"
-    "$VPY" -m securemailscope.ml.train >/dev/null \
+    "$VPY" -m mailsentinel.ml.train >/dev/null \
       && say "model trained" \
       || warn "model training failed — the rule engine is unaffected"
   fi
@@ -145,7 +145,7 @@ fi
 # to earn. An install that imports but cannot analyse is not a working install.
 if [[ $SMOKE_TEST -eq 1 && -f "$ROOT/demo-pcaps/smtp.pcap" ]]; then
   ML_FLAG=""; [[ "$HAS_ML" == "no" ]] && ML_FLAG="--no-ml"
-  GRADE=$("$VPY" -m securemailscope.cli analyse "$ROOT/demo-pcaps/smtp.pcap" \
+  GRADE=$("$VPY" -m mailsentinel.cli analyse "$ROOT/demo-pcaps/smtp.pcap" \
             --json - $ML_FLAG 2>/dev/null \
           | "$VPY" -c 'import json,sys; print(json.load(sys.stdin)["overall_grade"])')
   [[ "$GRADE" == "F" ]] \
@@ -168,4 +168,4 @@ echo "Then start the app:"
 echo
 echo "    cd frontend && npm install && npm run build && cd .."
 echo "    mvn -f backend/pom.xml -DskipTests package"
-echo "    java -jar backend/target/securemailscope-1.0.0.jar     # http://localhost:8080"
+echo "    java -jar backend/target/mailsentinel-1.0.0.jar     # http://localhost:8080"
