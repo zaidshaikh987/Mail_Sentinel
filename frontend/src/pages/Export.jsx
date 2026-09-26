@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { Card, Empty, Label } from '../components/ui'
 import { useReport } from '../App'
-import { reportHtmlUrl, reportJsonUrl, reportPrintUrl } from '../lib/api'
+import { reportHtmlUrl, reportJsonUrl, reportPrintUrl, fetchWithAuth } from '../lib/api'
 import { shortHash } from '../lib/format'
 
 /**
@@ -17,6 +17,42 @@ export default function ExportPage() {
   const { id } = useParams()
   const { report } = useReport()
   const [copied, setCopied] = useState(false)
+
+  const downloadJson = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetchWithAuth(reportJsonUrl(id));
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mailsentinel-${report.report?.capture?.filename || 'report'}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openHtml = async (e, print = false) => {
+    e.preventDefault();
+    try {
+      const targetUrl = print ? reportPrintUrl(id) : reportHtmlUrl(id);
+      const res = await fetchWithAuth(targetUrl);
+      const blob = await res.blob();
+      let htmlText = await blob.text();
+      
+      if (print) {
+        htmlText += "<script>window.onload = function() { window.print(); }</script>";
+      }
+      
+      const url = window.URL.createObjectURL(new Blob([htmlText], { type: 'text/html' }));
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (!report?.report) {
     return (
@@ -57,8 +93,8 @@ export default function ExportPage() {
             speak to each other.
           </p>
           <a
-            href={reportJsonUrl(id)}
-            download={`mailsentinel-${r.capture?.filename || 'report'}.json`}
+            href="#"
+            onClick={downloadJson}
             className="inline-block font-mono text-[11px] tracking-[0.08em] uppercase px-3 py-2 rounded border border-line bg-surface-2 text-ink no-underline hover:border-line-2"
           >
             Download JSON
@@ -75,17 +111,15 @@ export default function ExportPage() {
 
           <div className="flex gap-2 flex-wrap">
             <a
-              href={reportHtmlUrl(id)}
-              target="_blank"
-              rel="noreferrer"
+              href="#"
+              onClick={(e) => openHtml(e, false)}
               className="inline-block font-mono text-[11px] tracking-[0.08em] uppercase px-3 py-2 rounded border border-line bg-surface-2 text-ink no-underline hover:border-line-2"
             >
               Open HTML
             </a>
             <a
-              href={reportPrintUrl(id)}
-              target="_blank"
-              rel="noreferrer"
+              href="#"
+              onClick={(e) => openHtml(e, true)}
               className="inline-block font-mono text-[11px] tracking-[0.08em] uppercase px-3 py-2 rounded border border-line bg-surface-2 text-ink no-underline hover:border-line-2"
             >
               Save as PDF

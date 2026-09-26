@@ -12,6 +12,14 @@
  * backend like any upload.
  */
 
+export const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem('sms-token');
+  const headers = { ...options.headers };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return fetch(url, { ...options, headers });
+};
+
+
 async function json(res) {
   if (!res.ok) {
     let message = `${res.status} ${res.statusText}`
@@ -37,7 +45,7 @@ async function json(res) {
  */
 export async function health() {
   try {
-    const res = await fetch('/api/health', { signal: AbortSignal.timeout(4000) })
+    const res = await fetchWithAuth('/api/health', { signal: AbortSignal.timeout(4000) })
     const body = await res.json()
     return { ...body, reachable: true }
   } catch {
@@ -47,32 +55,32 @@ export async function health() {
 
 /** The bundled captures the backend can analyse on request. */
 export async function listDemoCaptures() {
-  return json(await fetch('/api/demo-captures'))
+  return json(await fetchWithAuth('/api/demo-captures'))
 }
 
 /** Analyse a bundled capture — the same pipeline an upload takes. */
 export async function analyseDemoCapture(name, investigationId) {
-  return json(await fetch(`/api/captures/demo/${encodeURIComponent(name)}?sync=false${investigationId ? `&investigationId=${investigationId}` : ""}`, {
+  return json(await fetchWithAuth(`/api/captures/demo/${encodeURIComponent(name)}?sync=false${investigationId ? `&investigationId=${investigationId}` : ""}`, {
     method: 'POST',
   }))
 }
 
 export async function listCaptures() {
-  return json(await fetch('/api/captures'))
+  return json(await fetchWithAuth('/api/captures'))
 }
 
 export async function getCapture(id) {
-  return json(await fetch(`/api/captures/${id}`))
+  return json(await fetchWithAuth(`/api/captures/${id}`))
 }
 
 export async function getSession(captureId, sessionId) {
-  return json(await fetch(`/api/captures/${captureId}/sessions/${sessionId}`))
+  return json(await fetchWithAuth(`/api/captures/${captureId}/sessions/${sessionId}`))
 }
 
 export async function uploadCapture(file, { sync = false, investigationId } = {}) {
   const form = new FormData()
   form.append('file', file)
-  const res = await fetch(`/api/captures${sync ? '/sync' : ''}${investigationId ? `?investigationId=${investigationId}` : ''}`, {
+  const res = await fetchWithAuth(`/api/captures${sync ? '/sync' : ''}${investigationId ? `?investigationId=${investigationId}` : ''}`, {
     method: 'POST',
     body: form,
   })
@@ -80,7 +88,7 @@ export async function uploadCapture(file, { sync = false, investigationId } = {}
 }
 
 export async function deleteCapture(id) {
-  const res = await fetch(`/api/captures/${id}`, { method: 'DELETE' })
+  const res = await fetchWithAuth(`/api/captures/${id}`, { method: 'DELETE' })
   if (!res.ok && res.status !== 204) throw new Error('could not delete that capture')
 }
 
@@ -223,14 +231,14 @@ export function adaptBackendSession(s) {
   }
 }
 
-export const listInvestigations = async () => json(await fetch('/api/investigations'))
-export const getInvestigation = async id => json(await fetch(`/api/investigations/${id}`))
-export const createInvestigation = async name => json(await fetch('/api/investigations', {
+export const listInvestigations = async () => json(await fetchWithAuth('/api/investigations'))
+export const getInvestigation = async id => json(await fetchWithAuth(`/api/investigations/${id}`))
+export const createInvestigation = async name => json(await fetchWithAuth('/api/investigations', {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
 }))
-export const cancelRun = async id => json(await fetch(`/api/captures/${id}/cancel`, { method: 'POST' }))
-export const retryRun = async id => json(await fetch(`/api/captures/${id}/retry`, { method: 'POST' }))
-export const compareRuns = async (id, before, after) => json(await fetch(`/api/investigations/${id}/compare?before=${before}&after=${after}`))
-export const saveRemediation = async (id, key, status, note = '') => json(await fetch(`/api/investigations/${id}/remediation`, {
+export const cancelRun = async id => json(await fetchWithAuth(`/api/captures/${id}/cancel`, { method: 'POST' }))
+export const retryRun = async id => json(await fetchWithAuth(`/api/captures/${id}/retry`, { method: 'POST' }))
+export const compareRuns = async (id, before, after) => json(await fetchWithAuth(`/api/investigations/${id}/compare?before=${before}&after=${after}`))
+export const saveRemediation = async (id, key, status, note = '') => json(await fetchWithAuth(`/api/investigations/${id}/remediation`, {
   method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, status, note }),
 }))

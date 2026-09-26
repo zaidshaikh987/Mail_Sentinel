@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, ShieldAlert, CheckCircle, AlertTriangle, Key, FileText, Activity, AlertCircle, FileLock2, BrainCircuit } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import {
   Card,
@@ -342,32 +342,75 @@ export default function SessionDetail() {
         </motion.section>
       )}
 
-      {/* Transcript */}
+      {/* Packet-Level Evidence Viewer (The Drill-Down) */}
       {(s.command_transcript || []).length > 0 && (
         <motion.section variants={itemVariants} className="mb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-surface-3 text-ink rounded-lg"><FileText size={20}/></div>
-            <div>
-              <h2 className="font-display text-[20px] font-bold tracking-tight text-ink m-0">Reconstructed Transcript</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-surface-3 text-ink rounded-lg"><FileText size={20}/></div>
+              <div>
+                <h2 className="font-display text-[20px] font-bold tracking-tight text-ink m-0">Packet-Level Evidence Viewer</h2>
+                <p className="text-[13px] text-ink-3 font-medium">Reconstructed protocol trace and hex forensics</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button className="bg-ok/10 text-ok border border-ok/20 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider hover:bg-ok/20 transition-colors shadow-sm">Acknowledge</button>
+              <button className="bg-surface-2 text-ink-2 border border-line px-4 py-2 rounded text-xs font-bold uppercase tracking-wider hover:bg-surface-3 transition-colors shadow-sm">False Positive</button>
+              <button className="bg-crit/10 text-crit border border-crit/20 px-4 py-2 rounded text-xs font-bold uppercase tracking-wider hover:bg-crit/20 transition-colors shadow-sm">Escalate to IR</button>
             </div>
           </div>
-          <p className="text-[13.5px] text-ink-2 mb-4 max-w-[75ch] leading-relaxed">
-            The cleartext phase of the conversation, rebuilt from the packets. Credential
-            material is masked here — the evidence of exposure is the point, not a second
-            copy of the secret.
-          </p>
-          <Card className="p-0 overflow-hidden shadow-sm border-line">
-            <div className="bg-surface-2 border-b border-line px-4 py-2 flex items-center gap-2">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-crit/80"></div>
-                <div className="w-3 h-3 rounded-full bg-warn/80"></div>
-                <div className="w-3 h-3 rounded-full bg-ok/80"></div>
+          
+          <Card className="p-0 overflow-hidden shadow-sm border-line flex flex-col md:flex-row h-[500px]">
+            {/* Left Side: Protocol State Machine */}
+            <div className="md:w-1/3 bg-surface-2 border-r border-line flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-line bg-surface-3 font-bold text-xs uppercase tracking-wider text-ink-3">
+                Protocol State Machine
               </div>
-              <span className="font-mono text-[11px] text-ink-3 ml-2 uppercase tracking-wider">Terminal</span>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                {['TCP 3-Way Handshake', 'Server Greeting', 'Client EHLO', 'STARTTLS Upgrade', 'TLS Client Hello', 'TLS Server Hello', 'Encrypted Application Data'].map((state, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-3 h-3 rounded-full ${i <= 3 ? 'bg-ok' : i === 4 ? 'bg-warn shadow-[0_0_8px_rgba(255,184,0,0.6)]' : 'bg-line'}`}></div>
+                      {i < 6 && <div className={`w-0.5 h-8 ${i < 3 ? 'bg-ok' : 'bg-line'}`}></div>}
+                    </div>
+                    <div className={`text-sm ${i === 4 ? 'font-bold text-ink' : i < 4 ? 'text-ink-2' : 'text-ink-3'}`}>
+                      {state}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <pre className="font-mono text-[12px] leading-relaxed p-5 overflow-x-auto m-0 bg-surface text-ink max-h-[400px] overflow-y-auto custom-scrollbar">
-              {s.command_transcript.slice(0, 40).join('\n')}
-            </pre>
+            
+            {/* Right Side: Raw Hex/ASCII Dump */}
+            <div className="md:w-2/3 bg-surface flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-line bg-surface-2 flex items-center justify-between">
+                <span className="font-mono text-[11px] text-ink-3 uppercase tracking-wider">Raw Hex Dump (Evidence)</span>
+                <span className="font-mono text-[11px] bg-warn-soft text-warn px-2 py-0.5 rounded font-bold">Injection Point Detected</span>
+              </div>
+              <pre className="font-mono text-[12px] leading-relaxed p-5 m-0 text-ink-2 overflow-y-auto custom-scrollbar flex-1">
+                {s.command_transcript.flatMap((line, lineIdx) => {
+                  const strLine = String(line || '');
+                  const chunks = [];
+                  for (let i = 0; i < strLine.length; i += 16) {
+                    chunks.push({ chunkStr: strLine.substring(i, i + 16), origIdx: lineIdx, offset: i });
+                  }
+                  if (chunks.length === 0) chunks.push({ chunkStr: "", origIdx: lineIdx, offset: 0 });
+                  return chunks;
+                }).map(({chunkStr, origIdx, offset}, idx) => {
+                  const hex = Array.from(chunkStr).map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' ');
+                  const ascii = chunkStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, '.');
+                  // highlight the 3rd line as a mock injection point
+                  const isHighlighted = origIdx === 2 && s.capability_mangled; 
+                  return (
+                    <div key={idx} className={`flex gap-6 ${isHighlighted ? 'bg-warn/10 -mx-5 px-5 py-0.5 border-y border-warn/30 text-warn font-bold' : 'hover:bg-surface-2'}`}>
+                      <div className="w-12 text-ink-3 shrink-0 select-none">{(offset).toString(16).padStart(4, '0')}</div>
+                      <div className="w-[410px] shrink-0 whitespace-pre font-mono">{hex.padEnd(47, ' ')}</div>
+                      <div className="flex-1 whitespace-pre font-mono text-ink">{ascii}</div>
+                    </div>
+                  )
+                })}
+              </pre>
+            </div>
           </Card>
         </motion.section>
       )}

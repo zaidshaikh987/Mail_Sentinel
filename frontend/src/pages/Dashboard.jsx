@@ -398,7 +398,7 @@ export default function Dashboard() {
       )}
 
       {/* Sessions */}
-      <motion.section variants={itemVariants} className="mb-8">
+      <motion.section id="sessions" variants={itemVariants} className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-info-soft text-info rounded-lg"><Network size={20}/></div>
           <div>

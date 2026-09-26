@@ -16,6 +16,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: sms-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: mailsentinel
       POSTGRES_USER: sms
@@ -35,6 +36,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sms-app
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy

@@ -39,13 +39,8 @@ server:
   error:
     include-message: always
 
-sms:
+ms:
   engine:
-    # The one setting that matters: an interpreter with the engine installed.
-    # ./scripts/setup.sh creates .venv and prints the export line.
-    # There is deliberately no "engine path" any more — the engine is an
-    # installed package, found by import, so local and Docker run one copy of
-    # exactly the same code.
     python: ${SMS_PYTHON:python3}
     demo-dir: ${SMS_DEMO_DIR:demo-pcaps}
     upload-dir: ${SMS_UPLOAD_DIR:./data/uploads}

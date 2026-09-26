@@ -143,6 +143,4 @@ def classify_role(protocol: Protocol, server_port: int) -> Role:
 
 def is_email_stream(protocol: Protocol, stream: TcpStream) -> bool:
     """Filter out non-mail conversations that happen to share the capture."""
-    if protocol != Protocol.UNKNOWN:
-        return True
-    return stream.server_port in IMPLICIT_TLS_PORTS or stream.server_port in STARTTLS_PORTS
+    return True
